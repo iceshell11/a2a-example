@@ -1,6 +1,9 @@
 package com.example.a2aspring;
 
+import com.example.a2aspring.config.A2AConfiguration;
+import com.example.a2aspring.config.NoOpPushNotificationSender;
 import com.example.a2aspring.controller.A2AServerController;
+import com.example.a2aspring.executor.SpringAgentExecutor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -11,14 +14,20 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+@SpringBootTest(classes = {
+        A2ASpringApplication.class,
+        A2AConfiguration.class,
+        A2AServerController.class,
+        SpringAgentExecutor.class,
+        NoOpPushNotificationSender.class
+})
 @AutoConfigureMockMvc
-public class A2AServerControllerTest {
+class A2AServerControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -27,7 +36,7 @@ public class A2AServerControllerTest {
     private ObjectMapper objectMapper;
 
     @Test
-    public void testAgentCardEndpoint() throws Exception {
+    void shouldReturnAgentCardWhenRequested() throws Exception {
         mockMvc.perform(get("/.well-known/agent-card.json"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -36,7 +45,7 @@ public class A2AServerControllerTest {
     }
 
     @Test
-    public void testSendMessageBlocking() throws Exception {
+    void shouldReturnCompletedTaskWhenSendMessageRequested() throws Exception {
         String requestBody = """
                 {
                     "jsonrpc": "2.0",
@@ -61,17 +70,17 @@ public class A2AServerControllerTest {
         String responseBody = result.getResponse().getContentAsString();
         JsonNode response = objectMapper.readTree(responseBody);
         
-        assertNotNull(response.get("id"));
-        assertNotNull(response.get("result"));
+        assertThat(response.get("id")).isNotNull();
+        assertThat(response.get("result")).isNotNull();
         
         JsonNode taskResult = response.get("result");
-        assertNotNull(taskResult.get("id"));
-        assertNotNull(taskResult.get("status"));
-        assertEquals("completed", taskResult.get("status").get("state").asText());
+        assertThat(taskResult.get("id")).isNotNull();
+        assertThat(taskResult.get("status")).isNotNull();
+        assertThat(taskResult.get("status").get("state").asText()).isEqualTo("completed");
     }
 
     @Test
-    public void testSendMessageWithAnalysisKeyword() throws Exception {
+    void shouldReturnArtifactsWhenAnalyzeKeywordProvided() throws Exception {
         String requestBody = """
                 {
                     "jsonrpc": "2.0",
@@ -95,7 +104,7 @@ public class A2AServerControllerTest {
     }
 
     @Test
-    public void testGetTask() throws Exception {
+    void shouldReturnSameTaskWhenGetTaskRequested() throws Exception {
         // First create a task
         String sendRequest = """
                 {
@@ -141,7 +150,7 @@ public class A2AServerControllerTest {
     }
 
     @Test
-    public void testCancelTask() throws Exception {
+    void shouldCancelTaskWhenCancelRequested() throws Exception {
         String sendRequest = """
                 {
                     "jsonrpc": "2.0",
@@ -186,7 +195,7 @@ public class A2AServerControllerTest {
     }
 
     @Test
-    public void testInvalidJson() throws Exception {
+    void shouldReturnErrorWhenInvalidJsonProvided() throws Exception {
         mockMvc.perform(post("/")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("invalid json"))
@@ -195,7 +204,7 @@ public class A2AServerControllerTest {
     }
 
     @Test
-    public void testUnknownMethod() throws Exception {
+    void shouldReturnErrorWhenUnknownMethodRequested() throws Exception {
         String requestBody = """
                 {
                     "jsonrpc": "2.0",

@@ -26,14 +26,12 @@ import io.a2a.spec.NonStreamingJSONRPCRequest;
 import io.a2a.spec.SendMessageRequest;
 import io.a2a.spec.SendStreamingMessageRequest;
 import io.a2a.spec.SetTaskPushNotificationConfigRequest;
-import io.a2a.spec.StreamingEventKind;
 import io.a2a.spec.TaskResubscriptionRequest;
 import io.a2a.transport.jsonrpc.handler.JSONRPCHandler;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -57,22 +55,23 @@ public class A2AServerController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(A2AServerController.class);
 
-    @Autowired
-    private JSONRPCHandler jsonRpcHandler;
+    private final JSONRPCHandler jsonRpcHandler;
+    private final ObjectMapper objectMapper;
+    private final Executor a2aExecutor;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private Executor a2aExecutor;
+    public A2AServerController(JSONRPCHandler jsonRpcHandler, 
+                               ObjectMapper objectMapper,
+                               Executor a2aExecutor) {
+        this.jsonRpcHandler = jsonRpcHandler;
+        this.objectMapper = objectMapper;
+        this.a2aExecutor = a2aExecutor;
+    }
 
     @PostMapping(value = "/", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> handleRequest(@RequestBody String body, HttpServletRequest request) {
         LOGGER.debug("Received request: {}", body);
         
         boolean streaming = false;
-        JSONRPCResponse<?> nonStreamingResponse = null;
-        SseEmitter emitter = null;
         
         try {
             JsonNode node = objectMapper.readTree(body);
@@ -85,7 +84,7 @@ public class A2AServerController {
             if (streaming) {
                 return handleStreamingRequest(node, context);
             } else {
-                nonStreamingResponse = handleNonStreamingRequest(node, context);
+                JSONRPCResponse<?> nonStreamingResponse = handleNonStreamingRequest(node, context);
                 return ResponseEntity.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(nonStreamingResponse);
@@ -229,17 +228,7 @@ public class A2AServerController {
             return UnauthenticatedUser.INSTANCE;
         }
         
-        return new User() {
-            @Override
-            public boolean isAuthenticated() {
-                return true;
-            }
-
-            @Override
-            public String getUsername() {
-                return username;
-            }
-        };
+        return new AuthenticatedUser(username);
     }
 
     private Map<String, String> extractHeaders(HttpServletRequest request) {

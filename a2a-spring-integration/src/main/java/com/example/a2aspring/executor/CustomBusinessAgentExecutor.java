@@ -10,29 +10,51 @@ import io.a2a.spec.TextPart;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
 
-@Component
+/**
+ * Example executor demonstrating keyword-based message routing.
+ * Not a Spring bean by default - extend and annotate with @Component to use.
+ */
 public class CustomBusinessAgentExecutor extends SpringAgentExecutor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CustomBusinessAgentExecutor.class);
+    
+    // Analysis thresholds
+    private static final int HIGH_COMPLEXITY_THRESHOLD = 100;
+    
+    // Summary limits
+    private static final int MAX_SENTENCES_IN_SUMMARY = 3;
+    
+    // Keywords
+    private static final String[] ANALYSIS_KEYWORDS = {"analyze", "analysis"};
+    private static final String[] SUMMARY_KEYWORDS = {"summarize", "summary"};
+    private static final String[] TRANSFORM_KEYWORDS = {"transform", "convert"};
 
     @Override
     protected String processMessage(String message) {
         String lowerMessage = message.toLowerCase();
         
-        if (lowerMessage.contains("analyze") || lowerMessage.contains("analysis")) {
+        if (containsAny(lowerMessage, ANALYSIS_KEYWORDS)) {
             return performAnalysis(message);
-        } else if (lowerMessage.contains("summarize") || lowerMessage.contains("summary")) {
+        } else if (containsAny(lowerMessage, SUMMARY_KEYWORDS)) {
             return performSummarization(message);
-        } else if (lowerMessage.contains("transform") || lowerMessage.contains("convert")) {
+        } else if (containsAny(lowerMessage, TRANSFORM_KEYWORDS)) {
             return performTransformation(message);
         } else {
             return generateGenericResponse(message);
         }
+    }
+    
+    private boolean containsAny(String text, String[] keywords) {
+        for (String keyword : keywords) {
+            if (text.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String performAnalysis(String message) {
@@ -60,7 +82,7 @@ public class CustomBusinessAgentExecutor extends SpringAgentExecutor {
                     message,
                     message.length(),
                     message.split("\\s+").length,
-                    message.length() > 100 ? "High" : "Low"
+                    message.length() > HIGH_COMPLEXITY_THRESHOLD ? "High" : "Low"
                 );
     }
 
@@ -76,7 +98,7 @@ public class CustomBusinessAgentExecutor extends SpringAgentExecutor {
         int count = 0;
         for (String sentence : sentences) {
             String trimmed = sentence.trim();
-            if (!trimmed.isEmpty() && count < 3) {
+            if (!trimmed.isEmpty() && count < MAX_SENTENCES_IN_SUMMARY) {
                 summary.append("- ").append(trimmed).append("\n");
                 count++;
             }

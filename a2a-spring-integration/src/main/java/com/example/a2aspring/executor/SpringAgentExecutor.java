@@ -15,11 +15,13 @@ import io.a2a.spec.TextPart;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
+@Primary
 public class SpringAgentExecutor implements AgentExecutor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SpringAgentExecutor.class);
@@ -52,8 +54,11 @@ public class SpringAgentExecutor implements AgentExecutor {
             updater.complete();
             LOGGER.info("Task completed successfully");
             
+        } catch (JSONRPCError e) {
+            LOGGER.error("JSONRPC error during task execution: {}", e.getMessage(), e);
+            throw e;
         } catch (Exception e) {
-            LOGGER.error("Error executing task", e);
+            LOGGER.error("Unexpected error during task execution", e);
             throw new InternalError("Task execution failed: " + e.getMessage());
         }
     }

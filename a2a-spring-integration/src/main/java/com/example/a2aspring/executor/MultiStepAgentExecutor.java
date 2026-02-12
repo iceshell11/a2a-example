@@ -12,12 +12,14 @@ import io.a2a.spec.TextPart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
 
-@Component
+/**
+ * Example executor demonstrating sub-agent workflow delegation.
+ * Not a Spring bean by default - extend and annotate with @Component to use.
+ */
 public class MultiStepAgentExecutor extends SpringAgentExecutor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MultiStepAgentExecutor.class);
@@ -55,8 +57,11 @@ public class MultiStepAgentExecutor extends SpringAgentExecutor {
             updater.complete();
             LOGGER.info("Multi-step execution completed");
             
+        } catch (JSONRPCError e) {
+            LOGGER.error("JSONRPC error during multi-step execution: {}", e.getMessage(), e);
+            throw e;
         } catch (Exception e) {
-            LOGGER.error("Error in multi-step execution", e);
+            LOGGER.error("Unexpected error during multi-step execution", e);
             throw new InternalError("Execution failed: " + e.getMessage());
         }
     }

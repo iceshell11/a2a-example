@@ -24,6 +24,17 @@ import java.util.UUID;
 public class SubAgentService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SubAgentService.class);
+    
+    // Processing delays in milliseconds
+    private static final long EXTRACTION_DELAY_MS = 500;
+    private static final long PROCESSING_DELAY_MS = 800;
+    private static final long FINALIZATION_DELAY_MS = 300;
+    
+    // Content limits
+    private static final int MAX_PREVIEW_LENGTH = 100;
+    private static final int MAX_FINAL_PREVIEW_LENGTH = 50;
+    private static final int MAX_ENTITIES_COUNT = 10;
+    private static final int PREVIEW_TRUNCATE_LENGTH = 20;
 
     public void processWithSubAgents(RequestContext context, EventQueue eventQueue) throws JSONRPCError {
         TaskUpdater updater = new TaskUpdater(context, eventQueue);
@@ -65,8 +76,11 @@ public class SubAgentService {
             
             sendProgressEvent(eventQueue, taskId, contextId, "All sub-agents completed successfully");
             
+        } catch (JSONRPCError e) {
+            LOGGER.error("JSONRPC error in sub-agent workflow: {}", e.getMessage(), e);
+            throw e;
         } catch (Exception e) {
-            LOGGER.error("Error in sub-agent workflow", e);
+            LOGGER.error("Unexpected error in sub-agent workflow", e);
             throw new InternalError("Sub-agent processing failed: " + e.getMessage());
         }
     }
@@ -76,7 +90,7 @@ public class SubAgentService {
         
         String userInput = context.getUserInput(" ");
         
-        simulateWork(500);
+        simulateWork(EXTRACTION_DELAY_MS);
         
         return """
                 **Sub-Agent 1 (Data Extractor) Results:**
@@ -84,12 +98,15 @@ public class SubAgentService {
                 - Extracted entities: %d
                 - Key terms identified: %s
                 - Data quality score: %.1f%%
-                - Processing time: 500ms
+                - Processing time: %dms
                 
                 Raw input captured successfully.
                 """.formatted(
-                    Math.min(userInput.split("\\s+").length, 10),
-                    userInput.length() > 20 ? userInput.substring(0, 20) + "..." : userInput,
+                    EXTRACTION_DELAY_MS,
+                    Math.min(userInput.split("\\s+").length, MAX_ENTITIES_COUNT),
+                    userInput.length() > PREVIEW_TRUNCATE_LENGTH 
+                            ? userInput.substring(0, PREVIEW_TRUNCATE_LENGTH) + "..." 
+                            : userInput,
                     95.5
                 );
     }
@@ -97,7 +114,7 @@ public class SubAgentService {
     private String executeSubAgent2(RequestContext context, EventQueue eventQueue, String previousResult) {
         LOGGER.debug("Executing Sub-Agent 2: Processor");
         
-        simulateWork(800);
+        simulateWork(PROCESSING_DELAY_MS);
         
         return """
                 **Sub-Agent 2 (Processor) Results:**
@@ -105,19 +122,22 @@ public class SubAgentService {
                 - Previous output analyzed
                 - Transformation applied: Content enrichment
                 - Confidence score: 0.92
-                - Processing time: 800ms
+                - Processing time: %dms
                 
                 **Enhanced Output:**
                 %s
                 
                 [Content has been processed and enriched with metadata]
-                """.formatted(previousResult.substring(0, Math.min(100, previousResult.length())));
+                """.formatted(
+                    PROCESSING_DELAY_MS,
+                    previousResult.substring(0, Math.min(MAX_PREVIEW_LENGTH, previousResult.length()))
+                );
     }
 
     private String executeSubAgent3(RequestContext context, EventQueue eventQueue, String previousResult) {
         LOGGER.debug("Executing Sub-Agent 3: Finalizer");
         
-        simulateWork(300);
+        simulateWork(FINALIZATION_DELAY_MS);
         
         return """
                 **Sub-Agent 3 (Finalizer) Results:**
@@ -125,7 +145,7 @@ public class SubAgentService {
                 - Final validation: PASSED
                 - Format consistency: VERIFIED
                 - Output optimization: COMPLETED
-                - Processing time: 300ms
+                - Processing time: %dms
                 
                 **Final Summary:**
                 All sub-agents have successfully completed their tasks.
@@ -134,7 +154,10 @@ public class SubAgentService {
                 
                 **Final Result Preview:**
                 %s
-                """.formatted(previousResult.substring(0, Math.min(50, previousResult.length())) + "...");
+                """.formatted(
+                    FINALIZATION_DELAY_MS,
+                    previousResult.substring(0, Math.min(MAX_FINAL_PREVIEW_LENGTH, previousResult.length())) + "..."
+                );
     }
 
     private void sendProgressEvent(EventQueue eventQueue, String taskId, String contextId, String message) {

@@ -95,8 +95,8 @@ public class A2AConfiguration {
     }
 
     @Bean
-    public PushNotificationSender pushNotificationSender() {
-        return null;
+    public PushNotificationSender pushNotificationSender(NoOpPushNotificationSender noOpSender) {
+        return noOpSender;
     }
 
     @Bean
