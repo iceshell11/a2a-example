@@ -23,7 +23,9 @@ public class A2AConfiguration {
     @Bean
     @Primary
     public ObjectMapper objectMapper() {
-        return new ObjectMapper();
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.findAndRegisterModules(); // This will auto-register JSR310 module if available
+        return mapper;
     }
 
     @Bean
