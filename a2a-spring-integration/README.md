@@ -5,7 +5,7 @@ A Spring Boot starter for building A2A (Agent-to-Agent) protocol compatible agen
 ## Features
 
 - **Auto-configuration**: Zero-config setup - just add the dependency
-- **Easy customization**: Implement `A2AExecutor` for custom agent logic
+- **Full SDK access**: Implement `AgentExecutor` with complete access to `RequestContext` and `EventQueue`
 - **JSON-RPC support**: Full A2A protocol implementation
 - **Streaming support**: Server-Sent Events for real-time responses
 - **Production-ready**: Thread pool management, error handling, logging
@@ -65,27 +65,86 @@ curl -X POST http://localhost:8080/ \
 
 ### Custom Agent Logic
 
-Implement `A2AExecutor` to define your agent's behavior:
+Implement `AgentExecutor` to define your agent's behavior. You have full access to `RequestContext` (task metadata, message, session) and `EventQueue` (streaming updates, status changes):
 
 ```java
-import io.github.a2asdk.spring.boot.starter.a2a.executor.A2AExecutor;
+import io.a2a.server.agentexecution.AgentExecutor;
+import io.a2a.server.agentexecution.RequestContext;
+import io.a2a.server.events.EventQueue;
+import io.a2a.server.tasks.TaskUpdater;
+import io.a2a.spec.JSONRPCError;
 import io.a2a.spec.Message;
+import io.a2a.spec.TaskState;
+import io.a2a.spec.TextPart;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 @Component
-public class MyA2AExecutor implements A2AExecutor {
+public class MyAgentExecutor implements AgentExecutor {
     
     @Override
-    public String execute(String taskId, Message message) {
-        String userMessage = extractText(message);
+    public void execute(RequestContext context, EventQueue eventQueue) throws JSONRPCError {
+        TaskUpdater updater = new TaskUpdater(context, eventQueue);
+        
+        // Submit and start work
+        updater.submit();
+        updater.startWork();
+        
+        // Access task information
+        String taskId = context.getTaskId();
+        Message message = context.getMessage();
+        String userText = extractText(message);
+        
+        // Send streaming updates (if streaming is enabled)
+        updater.updateStatus(TaskState.WORKING, "Processing your request...");
         
         // Your custom logic here
-        return "Response to: " + userMessage;
+        String result = processUserMessage(userText);
+        
+        // Add result as artifact
+        List<TextPart> parts = List.of(new TextPart(result, null));
+        updater.addArtifact(parts, "response", "Agent Response", null);
+        
+        // Complete the task
+        updater.complete();
+    }
+    
+    @Override
+    public void cancel(RequestContext context, EventQueue eventQueue) throws JSONRPCError {
+        TaskUpdater updater = new TaskUpdater(context, eventQueue);
+        updater.cancel();
+    }
+    
+    private String extractText(Message message) {
+        // Extract text from message parts
+        StringBuilder sb = new StringBuilder();
+        for (var part : message.getParts()) {
+            if (part instanceof TextPart textPart) {
+                sb.append(textPart.getText()).append(" ");
+            }
+        }
+        return sb.toString().trim();
+    }
+    
+    private String processUserMessage(String message) {
+        // Your business logic here
+        return "Processed: " + message;
     }
 }
 ```
 
-The starter will automatically detect and use your implementation.
+The starter will automatically detect and use your implementation. For simpler use cases, extend `DefaultAgentExecutor` and override `processMessage()`:
+
+```java
+@Component
+public class SimpleExecutor extends DefaultAgentExecutor {
+    @Override
+    protected String processMessage(String message) {
+        return "Custom response: " + message;
+    }
+}
+```
 
 ### Configuration
 
@@ -181,7 +240,7 @@ public class CustomA2AConfig {
 ```
 
 Available beans for override:
-- `A2AExecutor` - Custom agent logic
+- `AgentExecutor` - Custom agent logic (full access to RequestContext and EventQueue)
 - `TaskStore` - Task persistence
 - `PushNotificationSender` - Push notifications
 - `PushNotificationConfigStore` - Notification configuration storage
@@ -321,12 +380,25 @@ public class A2AConfiguration {
 **After:**
 ```java
 // Remove the configuration class
-// Just implement A2AExecutor:
+// Just implement AgentExecutor:
 @Component
-public class MyExecutor implements A2AExecutor {
+public class MyExecutor implements AgentExecutor {
     @Override
-    public String execute(String taskId, Message message) {
-        // Your logic
+    public void execute(RequestContext context, EventQueue eventQueue) throws JSONRPCError {
+        TaskUpdater updater = new TaskUpdater(context, eventQueue);
+        updater.submit();
+        updater.startWork();
+        
+        // Your logic with full access to context and event queue
+        String result = process(context.getMessage());
+        
+        updater.addArtifact(List.of(new TextPart(result, null)), "result", "Result", null);
+        updater.complete();
+    }
+    
+    @Override
+    public void cancel(RequestContext context, EventQueue eventQueue) throws JSONRPCError {
+        new TaskUpdater(context, eventQueue).cancel();
     }
 }
 ```
@@ -343,12 +415,16 @@ public class MyExecutor implements A2AExecutor {
 ```
 Client Request → A2AController → JSONRPCHandler → RequestHandler
                                             ↓
-                                     AgentExecutorAdapter
+                                     AgentExecutor (your implementation)
                                             ↓
-                                     A2AExecutor (your implementation)
-                                            ↓
-                                     Response
+                                      Response
 ```
+
+Your `AgentExecutor` implementation receives:
+- **RequestContext**: Task ID, message, session state, user info, metadata
+- **EventQueue**: Send status updates, streaming events, artifacts
+
+This gives you full control over the task lifecycle and supports advanced features like streaming updates and multi-step workflows.
 
 ## License
 

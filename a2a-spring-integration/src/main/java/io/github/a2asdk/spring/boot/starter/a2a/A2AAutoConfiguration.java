@@ -20,9 +20,7 @@ import io.a2a.spec.AgentCapabilities;
 import io.a2a.spec.AgentCard;
 import io.a2a.spec.AgentSkill;
 import io.a2a.transport.jsonrpc.handler.JSONRPCHandler;
-import io.github.a2asdk.spring.boot.starter.a2a.executor.A2AExecutor;
-import io.github.a2asdk.spring.boot.starter.a2a.executor.SimpleA2AExecutor;
-import io.github.a2asdk.spring.boot.starter.a2a.executor.internal.AgentExecutorAdapter;
+import io.github.a2asdk.spring.boot.starter.a2a.executor.DefaultAgentExecutor;
 import io.github.a2asdk.spring.boot.starter.a2a.executor.internal.NoOpPushNotificationSender;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -63,22 +61,55 @@ public class A2AAutoConfiguration {
     }
 
     /**
-     * User-provided executor for custom agent logic.
-     * Falls back to SimpleA2AExecutor if not provided.
+     * Agent executor for processing A2A tasks.
+     * Provide your own {@link AgentExecutor} bean to customize task processing.
+     * 
+     * <p>The executor has full access to:
+     * <ul>
+     *   <li>{@link RequestContext} - task metadata, message, session state</li>
+     *   <li>{@link EventQueue} - send events, streaming updates, status changes</li>
+     * </ul>
+     * 
+     * <p>Example custom implementation:
+     * <pre>{@code
+     * @Component
+     * public class MyAgentExecutor implements AgentExecutor {
+     *     @Override
+     *     public void execute(RequestContext context, EventQueue eventQueue) throws JSONRPCError {
+     *         TaskUpdater updater = new TaskUpdater(context, eventQueue);
+     *         updater.submit();
+     *         updater.startWork();
+     *         
+     *         // Access task info
+     *         String taskId = context.getTaskId();
+     *         Message message = context.getMessage();
+     *         
+     *         // Send streaming updates
+     *         updater.updateStatus(TaskState.WORKING, "Processing...");
+     *         
+     *         // Process and complete
+     *         String result = myService.process(message);
+     *         updater.addArtifact(List.of(new TextPart(result, null)), "result", "Result", null);
+     *         updater.complete();
+     *     }
+     *     
+     *     @Override
+     *     public void cancel(RequestContext context, EventQueue eventQueue) throws JSONRPCError {
+     *         TaskUpdater updater = new TaskUpdater(context, eventQueue);
+     *         updater.cancel();
+     *     }
+     * }
+     * }</pre>
+     * 
+     * @see AgentExecutor
+     * @see RequestContext
+     * @see EventQueue
+     * @see TaskUpdater
      */
     @Bean
-    @ConditionalOnMissingBean(A2AExecutor.class)
-    public A2AExecutor a2aExecutor() {
-        return new SimpleA2AExecutor();
-    }
-
-    /**
-     * Adapter that bridges A2AExecutor to AgentExecutor interface.
-     */
-    @Bean
-    @Primary
-    public AgentExecutor agentExecutor(A2AExecutor a2aExecutor) {
-        return new AgentExecutorAdapter(a2aExecutor);
+    @ConditionalOnMissingBean(AgentExecutor.class)
+    public AgentExecutor agentExecutor() {
+        return new DefaultAgentExecutor();
     }
 
     /**

@@ -1,13 +1,15 @@
 package io.github.a2asdk.spring.boot.starter.a2a;
 
 import io.a2a.server.agentexecution.AgentExecutor;
+import io.a2a.server.agentexecution.RequestContext;
+import io.a2a.server.events.EventQueue;
 import io.a2a.server.requesthandlers.RequestHandler;
 import io.a2a.server.tasks.PushNotificationConfigStore;
 import io.a2a.server.tasks.PushNotificationSender;
 import io.a2a.server.tasks.TaskStore;
+import io.a2a.spec.JSONRPCError;
 import io.a2a.transport.jsonrpc.handler.JSONRPCHandler;
-import io.github.a2asdk.spring.boot.starter.a2a.executor.A2AExecutor;
-import io.github.a2asdk.spring.boot.starter.a2a.executor.SimpleA2AExecutor;
+import io.github.a2asdk.spring.boot.starter.a2a.executor.DefaultAgentExecutor;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -26,7 +28,6 @@ class A2AAutoConfigurationTest {
     void shouldAutoConfigureBeansWhenEnabled() {
         this.contextRunner
                 .run(context -> {
-                    assertThat(context).hasSingleBean(A2AExecutor.class);
                     assertThat(context).hasSingleBean(AgentExecutor.class);
                     assertThat(context).hasSingleBean(TaskStore.class);
                     assertThat(context).hasSingleBean(RequestHandler.class);
@@ -41,7 +42,6 @@ class A2AAutoConfigurationTest {
         this.contextRunner
                 .withPropertyValues("a2a.enabled=false")
                 .run(context -> {
-                    assertThat(context).doesNotHaveBean(A2AExecutor.class);
                     assertThat(context).doesNotHaveBean(AgentExecutor.class);
                     assertThat(context).doesNotHaveBean(JSONRPCHandler.class);
                 });
@@ -51,23 +51,28 @@ class A2AAutoConfigurationTest {
     void shouldUseDefaultExecutorWhenNoneProvided() {
         this.contextRunner
                 .run(context -> {
-                    assertThat(context).hasSingleBean(A2AExecutor.class);
-                    assertThat(context.getBean(A2AExecutor.class)).isInstanceOf(SimpleA2AExecutor.class);
+                    assertThat(context).hasSingleBean(AgentExecutor.class);
+                    assertThat(context.getBean(AgentExecutor.class)).isInstanceOf(DefaultAgentExecutor.class);
                 });
     }
 
     @Test
     void shouldUseCustomExecutorWhenProvided() {
         this.contextRunner
-                .withBean(A2AExecutor.class, () -> new A2AExecutor() {
+                .withBean(AgentExecutor.class, () -> new AgentExecutor() {
                     @Override
-                    public String execute(String taskId, io.a2a.spec.Message message) {
-                        return "Custom response";
+                    public void execute(RequestContext context, EventQueue eventQueue) throws JSONRPCError {
+                        // Custom implementation
+                    }
+                    
+                    @Override
+                    public void cancel(RequestContext context, EventQueue eventQueue) throws JSONRPCError {
+                        // Custom implementation
                     }
                 })
                 .run(context -> {
-                    assertThat(context).hasSingleBean(A2AExecutor.class);
-                    assertThat(context.getBean(A2AExecutor.class)).isNotInstanceOf(SimpleA2AExecutor.class);
+                    assertThat(context).hasSingleBean(AgentExecutor.class);
+                    assertThat(context.getBean(AgentExecutor.class)).isNotInstanceOf(DefaultAgentExecutor.class);
                 });
     }
 }
