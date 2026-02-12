@@ -1,0 +1,137 @@
+{
+  "groups": [
+    {
+      "name": "a2a",
+      "type": "io.github.a2asdk.spring.boot.starter.a2a.A2AProperties",
+      "description": "A2A Spring Boot starter configuration"
+    },
+    {
+      "name": "a2a.agent",
+      "type": "io.github.a2asdk.spring.boot.starter.a2a.A2AProperties$AgentProperties",
+      "description": "Agent configuration"
+    },
+    {
+      "name": "a2a.agent.capabilities",
+      "type": "io.github.a2asdk.spring.boot.starter.a2a.A2AProperties$CapabilitiesProperties",
+      "description": "Agent capabilities configuration"
+    },
+    {
+      "name": "a2a.executor",
+      "type": "io.github.a2asdk.spring.boot.starter.a2a.A2AProperties$ExecutorProperties",
+      "description": "Executor thread pool configuration"
+    },
+    {
+      "name": "a2a.timeouts",
+      "type": "io.github.a2asdk.spring.boot.starter.a2a.A2AProperties$TimeoutProperties",
+      "description": "Timeout configuration"
+    }
+  ],
+  "properties": [
+    {
+      "name": "a2a.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether A2A auto-configuration is enabled",
+      "defaultValue": true
+    },
+    {
+      "name": "a2a.agent.name",
+      "type": "java.lang.String",
+      "description": "Agent name",
+      "defaultValue": "Spring A2A Agent"
+    },
+    {
+      "name": "a2a.agent.description",
+      "type": "java.lang.String",
+      "description": "Agent description",
+      "defaultValue": "A Spring Boot A2A agent"
+    },
+    {
+      "name": "a2a.agent.version",
+      "type": "java.lang.String",
+      "description": "Agent version",
+      "defaultValue": "1.0.0"
+    },
+    {
+      "name": "a2a.agent.url",
+      "type": "java.lang.String",
+      "description": "Agent URL",
+      "defaultValue": "http://localhost:8080"
+    },
+    {
+      "name": "a2a.agent.capabilities.streaming",
+      "type": "java.lang.Boolean",
+      "description": "Whether streaming is supported",
+      "defaultValue": true
+    },
+    {
+      "name": "a2a.agent.capabilities.push-notifications",
+      "type": "java.lang.Boolean",
+      "description": "Whether push notifications are supported",
+      "defaultValue": false
+    },
+    {
+      "name": "a2a.agent.capabilities.state-transition-history",
+      "type": "java.lang.Boolean",
+      "description": "Whether state transition history is supported",
+      "defaultValue": false
+    },
+    {
+      "name": "a2a.executor.core-pool-size",
+      "type": "java.lang.Integer",
+      "description": "Core pool size for the executor",
+      "defaultValue": 5
+    },
+    {
+      "name": "a2a.executor.max-pool-size",
+      "type": "java.lang.Integer",
+      "description": "Maximum pool size for the executor",
+      "defaultValue": 50
+    },
+    {
+      "name": "a2a.executor.keep-alive-seconds",
+      "type": "java.lang.Long",
+      "description": "Keep alive time in seconds for idle threads",
+      "defaultValue": 60
+    },
+    {
+      "name": "a2a.timeouts.blocking-agent",
+      "type": "java.lang.Integer",
+      "description": "Timeout in seconds for blocking agent operations",
+      "defaultValue": 30
+    },
+    {
+      "name": "a2a.timeouts.blocking-consumption",
+      "type": "java.lang.Integer",
+      "description": "Timeout in seconds for blocking consumption operations",
+      "defaultValue": 5
+    }
+  ],
+  "hints": [
+    {
+      "name": "a2a.agent.input-modes",
+      "values": [
+        {
+          "value": "text",
+          "description": "Text input mode"
+        },
+        {
+          "value": "file",
+          "description": "File input mode"
+        }
+      ]
+    },
+    {
+      "name": "a2a.agent.output-modes",
+      "values": [
+        {
+          "value": "text",
+          "description": "Text output mode"
+        },
+        {
+          "value": "file",
+          "description": "File output mode"
+        }
+      ]
+    }
+  ]
+}

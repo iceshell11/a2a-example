@@ -1,42 +1,51 @@
-# A2A Spring Boot Integration
+# Spring Boot Starter for A2A
 
-A complete Spring Boot integration with the A2A (Agent2Agent) Java SDK, enabling you to build A2A-compatible agents using Spring's dependency injection and configuration management.
+A Spring Boot starter for building A2A (Agent-to-Agent) protocol compatible agents. This starter provides auto-configuration for the A2A Java SDK, making it easy to create A2A agents with minimal configuration.
 
 ## Features
 
-- **Unified JSON-RPC Endpoint**: Single endpoint handling all A2A protocol methods
-- **Event-Driven Architecture**: Send status updates and artifacts via EventQueue
-- **Sub-Agent Support**: Delegate work to multiple sub-agents with progress tracking
-- **Streaming Support**: Real-time event streaming via SSE (Server-Sent Events)
-- **Spring Configuration**: Full Spring dependency injection and configuration
-- **No LangChain Required**: Pure Java/Spring implementation
+- **Auto-configuration**: Zero-config setup - just add the dependency
+- **Easy customization**: Implement `A2AExecutor` for custom agent logic
+- **JSON-RPC support**: Full A2A protocol implementation
+- **Streaming support**: Server-Sent Events for real-time responses
+- **Production-ready**: Thread pool management, error handling, logging
+
+## Requirements
+
+- Java 17+
+- Spring Boot 3.5.8+
+- A2A Java SDK 0.3.3.Final
 
 ## Quick Start
 
-### 1. Build the Project
+### 1. Add Dependency
 
-```bash
-cd a2a-spring-integration
-mvn clean install
+```xml
+<dependency>
+    <groupId>io.github.a2asdk</groupId>
+    <artifactId>spring-boot-starter-a2a</artifactId>
+    <version>0.3.3-SNAPSHOT</version>
+</dependency>
 ```
 
-### 2. Run the Application
+### 2. Run Your Application
 
 ```bash
 mvn spring-boot:run
 ```
 
-The server will start on `http://localhost:8080`
+Your Spring Boot application now has an A2A agent running on port 8080:
 
-### 3. Test the Agent Card
+- **JSON-RPC endpoint**: `POST /`
+- **Agent card**: `GET /.well-known/agent-card.json`
+
+### 3. Test It
 
 ```bash
+# Get agent card
 curl http://localhost:8080/.well-known/agent-card.json
-```
 
-### 4. Send a Message
-
-```bash
+# Send a message
 curl -X POST http://localhost:8080/ \
   -H "Content-Type: application/json" \
   -d '{
@@ -46,166 +55,145 @@ curl -X POST http://localhost:8080/ \
     "params": {
       "message": {
         "role": "user",
-        "parts": [{"text": "Hello, please analyze this message"}]
+        "parts": [{"text": "Hello!"}]
       }
     }
   }'
 ```
 
-## Project Structure
+## Customization
 
-```
-com.example.a2aspring/
-├── A2ASpringApplication.java          # Spring Boot entry point
-├── config/
-│   └── A2AConfiguration.java          # A2A SDK bean configuration
-├── controller/
-│   └── A2AServerController.java       # JSON-RPC REST endpoint
-├── executor/
-│   ├── SpringAgentExecutor.java       # Base executor implementation
-│   ├── CustomBusinessAgentExecutor.java  # Example business logic executor
-│   └── MultiStepAgentExecutor.java    # Multi-step/sub-agent executor
-└── service/
-    └── SubAgentService.java           # Sub-agent delegation service
-```
+### Custom Agent Logic
 
-## Architecture
-
-### Components
-
-1. **A2AServerController**
-   - Handles HTTP requests at `/`
-   - Routes JSON-RPC requests to appropriate handlers
-   - Supports both blocking and streaming (SSE) responses
-
-2. **SpringAgentExecutor**
-   - Implements `AgentExecutor` interface
-   - Processes user messages
-   - Sends events via `TaskUpdater`
-   - Can be extended for custom logic
-
-3. **A2AConfiguration**
-   - Configures all A2A SDK components as Spring beans
-   - Sets up `TaskStore`, `QueueManager`, `RequestHandler`, etc.
-   - Configures thread pool for async operations
-
-### Event Flow
-
-```
-Client Request → A2AServerController → JSONRPCHandler → DefaultRequestHandler
-                                                          ↓
-                                                    AgentExecutor.execute()
-                                                          ↓
-                         ┌────────────────────────────────┼────────────────────────────────┐
-                         ↓                                ↓                                ↓
-                   TaskUpdater.submit()         TaskUpdater.addArtifact()        TaskUpdater.complete()
-                         ↓                                ↓                                ↓
-                   EventQueue (status)           EventQueue (artifact)          EventQueue (final)
-                         ↓                                ↓                                ↓
-                         └────────────────────────────────┴────────────────────────────────┘
-                                                          ↓
-                                                    Client Response
-```
-
-## Customizing the Agent
-
-### Basic Customization
-
-Extend `SpringAgentExecutor` and override `processMessage()`:
+Implement `A2AExecutor` to define your agent's behavior:
 
 ```java
+import io.github.a2asdk.spring.boot.starter.a2a.executor.A2AExecutor;
+import io.a2a.spec.Message;
+import org.springframework.stereotype.Component;
+
 @Component
-public class MyAgentExecutor extends SpringAgentExecutor {
+public class MyA2AExecutor implements A2AExecutor {
     
     @Override
-    protected String processMessage(String message) {
+    public String execute(String taskId, Message message) {
+        String userMessage = extractText(message);
+        
         // Your custom logic here
-        return "Custom response for: " + message;
+        return "Response to: " + userMessage;
     }
 }
 ```
 
-### Advanced: Sub-Agent Workflow
+The starter will automatically detect and use your implementation.
 
-Use `MultiStepAgentExecutor` to delegate to sub-agents:
+### Configuration
 
-```java
-@Component
-public class MyMultiStepExecutor extends SpringAgentExecutor {
-    
-    @Autowired
-    private SubAgentService subAgentService;
-    
-    @Override
-    public void execute(RequestContext context, EventQueue eventQueue) throws JSONRPCError {
-        TaskUpdater updater = new TaskUpdater(context, eventQueue);
-        
-        // Initialize task
-        updater.submit();
-        updater.startWork();
-        
-        // Delegate to sub-agents
-        subAgentService.processWithSubAgents(context, eventQueue);
-        
-        // Complete
-        updater.complete();
-    }
-}
+Configure via `application.yml`:
+
+```yaml
+a2a:
+  enabled: true
+  agent:
+    name: "My Custom Agent"
+    description: "Does amazing things"
+    url: "https://myagent.example.com"
+    capabilities:
+      streaming: true
+      push-notifications: false
+      state-transition-history: false
+    input-modes:
+      - text
+      - file
+    output-modes:
+      - text
+  executor:
+    core-pool-size: 10
+    max-pool-size: 100
+    keep-alive-seconds: 60
+  timeouts:
+    blocking-agent: 30
+    blocking-consumption: 5
 ```
 
-### Sending Custom Events
-
-```java
-@Override
-public void execute(RequestContext context, EventQueue eventQueue) throws JSONRPCError {
-    TaskUpdater updater = new TaskUpdater(context, eventQueue);
-    
-    // Update status
-    updater.startWork();
-    
-    // Add artifact
-    List<Part<?>> parts = List.of(new TextPart("Result", null));
-    updater.addArtifact(parts, "result-id", "My Result", null);
-    
-    // Custom status update with metadata
-    TaskStatusUpdateEvent event = new TaskStatusUpdateEvent.Builder()
-        .taskId(context.getTaskId())
-        .contextId(context.getContextId())
-        .status(new TaskStatus(TaskState.WORKING, message, null))
-        .isFinal(false)
-        .metadata(Map.of("progress", "50%"))
-        .build();
-    
-    eventQueue.enqueueEvent(event);
-    
-    // Complete
-    updater.complete();
-}
-```
-
-## Configuration
-
-### Application Properties
+Or via `application.properties`:
 
 ```properties
-# Timeouts
-a2a.blocking.agent.timeout.seconds=30
-a2a.blocking.consumption.timeout.seconds=5
+# Enable/disable
+a2a.enabled=true
 
-# Thread Pool
-a2a.executor.core-pool-size=5
-a2a.executor.max-pool-size=50
-a2a.executor.keep-alive-seconds=60
+# Agent configuration
+a2a.agent.name=My Custom Agent
+a2a.agent.description=Does amazing things
+a2a.agent.url=https://myagent.example.com
+a2a.agent.version=1.0.0
+
+# Capabilities
+a2a.agent.capabilities.streaming=true
+a2a.agent.capabilities.push-notifications=false
+
+# Thread pool
+a2a.executor.core-pool-size=10
+a2a.executor.max-pool-size=100
 ```
 
-### Agent Card Configuration
+## Configuration Properties
 
-Modify `A2AConfiguration.agentCard()` to customize:
+| Property | Default | Description |
+|----------|---------|-------------|
+| `a2a.enabled` | `true` | Enable/disable auto-configuration |
+| `a2a.agent.name` | `"Spring A2A Agent"` | Agent name |
+| `a2a.agent.description` | `"A Spring Boot A2A agent"` | Agent description |
+| `a2a.agent.version` | `"1.0.0"` | Agent version |
+| `a2a.agent.url` | `"http://localhost:8080"` | Agent URL |
+| `a2a.agent.capabilities.streaming` | `true` | Support streaming |
+| `a2a.agent.capabilities.push-notifications` | `false` | Support push notifications |
+| `a2a.agent.capabilities.state-transition-history` | `false` | Support state transition history |
+| `a2a.agent.input-modes` | `["text"]` | Supported input modes |
+| `a2a.agent.output-modes` | `["text"]` | Supported output modes |
+| `a2a.executor.core-pool-size` | `5` | Thread pool core size |
+| `a2a.executor.max-pool-size` | `50` | Thread pool max size |
+| `a2a.executor.keep-alive-seconds` | `60` | Thread keep-alive time |
+| `a2a.timeouts.blocking-agent` | `30` | Timeout for blocking agent ops |
+| `a2a.timeouts.blocking-consumption` | `5` | Timeout for blocking consumption |
 
-- **Agent Name**: Display name of your agent
-- **Capabilities**: Streaming, push notifications, state history
-- **Skills**: What your agent can do
-- **Input/Output Modes**: Supported formats (text, file, etc.)
+## Advanced Usage
+
+### Custom Beans
+
+You can override any auto-configured bean by providing your own:
+
+```java
+@Configuration
+public class CustomA2AConfig {
+    
+    @Bean
+    @Primary
+    public TaskStore customTaskStore() {
+        return new MyPersistentTaskStore(); // e.g., database-backed
+    }
+    
+    @Bean
+    public PushNotificationSender pushNotificationSender() {
+        return new WebhookNotificationSender();
+    }
+}
+```
+
+Available beans for override:
+- `A2AExecutor` - Custom agent logic
+- `TaskStore` - Task persistence
+- `PushNotificationSender` - Push notifications
+- `PushNotificationConfigStore` - Notification configuration storage
+- `RequestHandler` - Request processing
+- `JSONRPCHandler` - JSON-RPC transport
+
+### Disable Auto-Configuration
+
+```yaml
+a2a:
+  enabled: false
+```
 
 ## API Endpoints
 
@@ -215,7 +203,7 @@ Modify `A2AConfiguration.agentCard()` to customize:
 
 Handles all A2A protocol methods:
 - `tasks/send` - Send a message (blocking)
-- `tasks/sendSubscribe` - Send a message (streaming)
+- `tasks/sendSubscribe` - Send a message (streaming/SSE)
 - `tasks/get` - Get task status
 - `tasks/cancel` - Cancel a task
 - `tasks/pushNotification/set` - Configure push notifications
@@ -249,7 +237,7 @@ curl -X POST http://localhost:8080/ \
   }'
 ```
 
-### Streaming Request
+### Streaming Request (SSE)
 
 ```bash
 curl -X POST http://localhost:8080/ \
@@ -291,45 +279,76 @@ Run the test suite:
 mvn test
 ```
 
-## Dependencies
-
-Key dependencies:
-- Spring Boot 3.2.x
-- A2A Java SDK 0.3.2.Final
-- Jackson for JSON processing
-
 ## Troubleshooting
 
-### Common Issues
+### Port Already in Use
 
-1. **Port already in use**
-   ```properties
-   server.port=8081
-   ```
+```properties
+server.port=8081
+```
 
-2. **Timeout issues**
-   ```properties
-   a2a.blocking.agent.timeout.seconds=60
-   ```
+### Timeout Issues
 
-3. **Thread pool exhaustion**
-   ```properties
-   a2a.executor.max-pool-size=100
-   ```
+```properties
+a2a.timeouts.blocking-agent=60
+```
+
+### Thread Pool Exhaustion
+
+```properties
+a2a.executor.max-pool-size=100
+```
 
 ### Debug Logging
 
 ```properties
+logging.level.io.github.a2asdk.spring.boot.starter.a2a=DEBUG
 logging.level.io.a2a=DEBUG
-logging.level.com.example.a2aspring=TRACE
+```
+
+## Migration from Manual Configuration
+
+If you were using the old manual `@Configuration` approach:
+
+**Before:**
+```java
+@Configuration
+public class A2AConfiguration {
+    // Manual bean definitions
+}
+```
+
+**After:**
+```java
+// Remove the configuration class
+// Just implement A2AExecutor:
+@Component
+public class MyExecutor implements A2AExecutor {
+    @Override
+    public String execute(String taskId, Message message) {
+        // Your logic
+    }
+}
 ```
 
 ## Next Steps
 
-1. **Add Authentication**: Implement JWT or OAuth2 in `A2AServerController.createUser()`
-2. **Persistent Storage**: Replace `InMemoryTaskStore` with database-backed store
+1. **Add Authentication**: Implement security in `A2AController` by providing a custom `User` factory
+2. **Persistent Storage**: Implement custom `TaskStore` with database backend
 3. **Push Notifications**: Implement `PushNotificationSender` for webhooks
-4. **Custom Transports**: Add REST or gRPC endpoints alongside JSON-RPC
+4. **Custom Skills**: Define agent skills in configuration
+
+## Architecture
+
+```
+Client Request → A2AController → JSONRPCHandler → RequestHandler
+                                            ↓
+                                     AgentExecutorAdapter
+                                            ↓
+                                     A2AExecutor (your implementation)
+                                            ↓
+                                     Response
+```
 
 ## License
 

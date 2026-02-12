@@ -8,21 +8,22 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.0</version>
+        <version>3.5.8</version>
         <relativePath/>
     </parent>
 
-    <groupId>com.example</groupId>
-    <artifactId>a2a-spring-integration</artifactId>
-    <version>1.0.0</version>
+    <groupId>io.github.a2asdk</groupId>
+    <artifactId>spring-boot-starter-a2a</artifactId>
+    <version>0.3.3-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>A2A Spring Boot Integration</name>
-    <description>Spring Boot integration with A2A Java SDK</description>
+    <name>Spring Boot Starter A2A</name>
+    <description>Spring Boot starter for A2A (Agent-to-Agent) protocol integration</description>
+    <url>https://github.com/a2asdk/a2a-java-sdk</url>
 
     <properties>
         <java.version>17</java.version>
-        <a2a.sdk.version>0.3.2.Final</a2a.sdk.version>
+        <a2a.sdk.version>0.3.3.Final</a2a.sdk.version>
     </properties>
 
     <dependencies>
@@ -39,7 +40,8 @@
         
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
         </dependency>
 
         <!-- A2A Java SDK Dependencies -->
@@ -61,12 +63,6 @@
             <version>${a2a.sdk.version}</version>
         </dependency>
 
-        <!-- Jackson for JSON processing -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -78,8 +74,11 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <parameters>true</parameters>
+                </configuration>
             </plugin>
         </plugins>
     </build>
