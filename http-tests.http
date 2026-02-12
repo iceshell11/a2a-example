@@ -1,0 +1,177 @@
+### HTTP Test Requests for A2A Spring Demo
+### Using jsonrpc4j for proper JSON-RPC 2.0 dispatching
+### No switch-case - annotation-based method routing
+
+### 1. Health Check
+GET http://localhost:8080/health
+Accept: application/json
+
+###
+
+### 2. Get Agent Card (Discovery)
+GET http://localhost:8080/.well-known/agent-card.json
+Accept: application/json
+
+###
+
+### 3. Send Weather Task (JSON-RPC)
+POST http://localhost:8080/
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "req-001",
+  "method": "tasks/send",
+  "params": {
+    "id": "task-001",
+    "message": {
+      "role": "user",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "What's the weather in London?"
+        }
+      ]
+    }
+  }
+}
+
+###
+
+### 4. Send Forecast Task
+POST http://localhost:8080/
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "req-002",
+  "method": "tasks/send",
+  "params": {
+    "id": "task-002",
+    "message": {
+      "role": "user",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "Give me a 3-day forecast for New York"
+        }
+      ]
+    }
+  }
+}
+
+###
+
+### 5. Get Task Status
+POST http://localhost:8080/
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "req-003",
+  "method": "tasks/get",
+  "params": {
+    "id": "task-001"
+  }
+}
+
+###
+
+### 6. Cancel Task
+POST http://localhost:8080/
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "req-004",
+  "method": "tasks/cancel",
+  "params": {
+    "id": "task-001"
+  }
+}
+
+###
+
+### 7. Streaming Request (SSE)
+POST http://localhost:8080/stream
+Content-Type: application/json
+Accept: text/event-stream
+
+{
+  "jsonrpc": "2.0",
+  "id": "req-stream-001",
+  "method": "tasks/send",
+  "params": {
+    "id": "task-stream-001",
+    "message": {
+      "role": "user",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "What's the weather in Tokyo?"
+        }
+      ]
+    }
+  }
+}
+
+###
+
+### 8. Invalid JSON-RPC Version
+POST http://localhost:8080/
+Content-Type: application/json
+
+{
+  "jsonrpc": "1.0",
+  "id": "req-error-001",
+  "method": "tasks/send",
+  "params": {
+    "id": "task-error-001",
+    "message": {
+      "role": "user",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "Hello"
+        }
+      ]
+    }
+  }
+}
+
+###
+
+### 9. Unknown Method
+POST http://localhost:8080/
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "req-error-002",
+  "method": "tasks/unknown",
+  "params": {}
+}
+
+###
+
+### 10. Greeting/Help Request
+POST http://localhost:8080/
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "req-help-001",
+  "method": "tasks/send",
+  "params": {
+    "id": "task-help-001",
+    "message": {
+      "role": "user",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "Hello, what can you do?"
+        }
+      ]
+    }
+  }
+}

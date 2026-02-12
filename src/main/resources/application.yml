@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: a2a-spring-demo
+  
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:stub-key}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0.7
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+logging:
+  level:
+    com.example.a2a: DEBUG
+    io.a2a: INFO
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# A2A SDK Configuration
+a2a:
+  executor:
+    core-pool-size: 5
+    max-pool-size: 50
+    keep-alive-seconds: 60
+  blocking:
+    agent:
+      timeout:
+        seconds: 30
+    consumption:
+      timeout:
+        seconds: 5
